@@ -1,4 +1,3 @@
-from typing import final
 from bleak import BleakClient
 import asyncio
 
