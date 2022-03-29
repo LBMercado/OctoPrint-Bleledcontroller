@@ -1,6 +1,7 @@
 # OctoPrint-Bleledcontroller
 
 This plugin controls cheap 12V LED strips via BLE (Bluetooth Low Energy) using Bleak Python package. [Learn more about this package here](https://bleak.readthedocs.io/en/latest/)
+
 Inspired by a [repository](https://github.com/FergusInLondon/ELK-BLEDOM) I found digging around how to communicate with these 12V LED Strips which conveniently also used the same ELK-BLEDOM bluetooth RGB controller.
 
 ## Setup
