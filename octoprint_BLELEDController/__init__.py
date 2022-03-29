@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import octoprint.plugin
 import octoprint.settings
 import asyncio
+import flask
 
 from .LEDCommand import LEDCommand
 from .BLELEDControllerInterface import BLELEDControllerInterface
@@ -142,7 +143,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         # have to block and make sure this finishes
         while not future.done():
             pass
-        return {'is_connected': self.BLE_intf.is_connected()}
+        return flask.jsonify(is_connected=bool(self.BLE_intf.is_connected()))
 
     ##~~ Softwareupdate hook 
     # @TODO: update config

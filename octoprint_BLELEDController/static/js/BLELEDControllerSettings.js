@@ -19,7 +19,8 @@ $(function() {
         self.testConn = function() {
             OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect')
             .done((res)=>{
-                self.isConnTestOk(res.is_connected ? "Connection successful!" : "Connection failed!");
+                var is_connected = res.is_connected
+                self.isConnTestOk(is_connected ? "Connection successful!" : "Connection failed!");
                 showDialog("#settings_simpleDialog", function(dialog){
                     dialog.modal('hide');
                 });
