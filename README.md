@@ -11,6 +11,25 @@ or manually using this URL:
 
     https://github.com/LBMercado/OctoPrint-Bleledcontroller/archive/master.zip
 
+Bluetooth services require root permissions by default, you can get around that permission issue by providing your OctoPrint user, (pi user), the permissions necessary to be able to use them.
+
+Modify the bluetooth configuration in your Raspberry Pi
+
+    sudo nano /etc/dbus-1/system.d/bluetooth.conf
+
+Paste this config code into the configuration, between the <busconfig> tags
+
+    <policy user="pi">
+        <allow send_destination="org.bluez"/>
+        <allow send_interface="org.bluez.Agent1"/>
+        <allow send_interface="org.bluez.GattCharacteristic1"/>
+        <allow send_interface="org.bluez.GattDescriptor1"/>
+        <allow send_interface="org.freedesktop.DBus.ObjectManager"/>
+        <allow send_interface="org.freedesktop.DBus.Properties"/>
+    </policy>
+
+[View here for reference]https://forums.raspberrypi.com/viewtopic.php?t=108581)
+
 ## Configuration
 
 You will need to know the MAC address of the bluetooth device in question, though I could implement an auto-scanner in the future, for now it is manually set.
