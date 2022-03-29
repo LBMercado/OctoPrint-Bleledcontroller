@@ -1,0 +1,4 @@
+include README.md
+recursive-include octoprint_BLELEDController/templates *
+recursive-include octoprint_BLELEDController/translations *
+recursive-include octoprint_BLELEDController/static *
