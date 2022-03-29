@@ -17,25 +17,25 @@ For the service UUID to use, it should be the same like in the repository I base
 
 ## Raw code snippet for testing the bluetooth functionality
 
-import asyncio
-from bleak import BleakClient
-import time
+    import asyncio
+    from bleak import BleakClient
+    import time
 
-address = "<Provide-MAC-address-here>"
-service_UUID = "0000fff3-0000-1000-8000-00805f9b34fb"
-red_command = bytearray([0x7E, 0x00, 0x05, 0x03, 0xFF, 0x00, 0x00, 0x00, 0xEF])
-white_command = bytearray([0x7E, 0x00, 0x05, 0x03, 0xFF, 0xFF, 0xFF, 0x00, 0xEF])
+    address = "<Provide-MAC-address-here>"
+    service_UUID = "0000fff3-0000-1000-8000-00805f9b34fb"
+    red_command = bytearray([0x7E, 0x00, 0x05, 0x03, 0xFF, 0x00, 0x00, 0x00, 0xEF])
+    white_command = bytearray([0x7E, 0x00, 0x05, 0x03, 0xFF, 0xFF, 0xFF, 0x00, 0xEF])
 
-async def main(address):
-    client = BleakClient(address)
-    try:
-        await client.connect()
-        await client.write_gatt_char(service_UUID, red_command)
-        time.sleep(5)
-        await client.write_gatt_char(service_UUID, white_command)
-    except Exception as e:
-        print(e)
-    finally:
-        await client.disconnect()
+    async def main(address):
+        client = BleakClient(address)
+        try:
+            await client.connect()
+            await client.write_gatt_char(service_UUID, red_command)
+            time.sleep(5)
+            await client.write_gatt_char(service_UUID, white_command)
+        except Exception as e:
+            print(e)
+        finally:
+            await client.disconnect()
 
-asyncio.run(main(address))exit
+    asyncio.run(main(address))exit
