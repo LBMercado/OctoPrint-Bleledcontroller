@@ -30,7 +30,7 @@ class BLELEDControllerInterface():
 
     def is_connected(self) -> bool:
         if self.client_conn is not None:
-            return self.client_conn.is_connected
+            return bool(self.client_conn.is_connected) # prevent error relating to different data type passed
         else:
             return False
 
