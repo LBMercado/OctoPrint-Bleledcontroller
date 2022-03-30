@@ -1,1 +1,4 @@
-/* TODO: Have your plugin's CSS files generated to here. */
+.row-fluid, .row-fluid-2 {
+    margin-top: 1vh;
+    margin-bottom: 1vh;
+}

@@ -22,15 +22,19 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def on_after_startup(self):
         self._logger.info("BLELEDStripPlugin has started initializing")
     
-        self.color_rgb = self._settings.get_int(["led_strip_hex_color"])
+        self.led_strip_config = self._settings.get(["led_strip"])
+
         self.BLE_intf = BLELEDControllerInterface(
             address=self._settings.get(["mac_addr"])
-           ,service_UID=self._settings.get(["service_uuid"]),
-           logger=self._logger)
+        ,service_UID=self._settings.get(["service_uuid"]),
+        logger=self._logger)
+
         self.led_cmd_maker = LEDCommand(start_code=0x7e,end_code=0xef)
         self._logger.info("Init settings - MAC Address: " + self._settings.get(["mac_addr"]) 
                         + "\nService UUID: " + self._settings.get(["service_uuid"])
-                        + "\nRGB Hex: " + str(hex(self._settings.get_int(["led_strip_hex_color"])))
+                        + "\nLED Strip Config: RGB Hex: " + str(hex(self._settings.get_int(["led_strip", "hex_color"])))
+                        + "\n is on: " + str(self._settings.get(["led_strip", "is_on"]))
+                        + "\n brightness: " + str(self._settings.get_int(["led_strip", "brightness"]))
         )
         self.worker_mgr = WorkerManager(self)
         # make sure async loop has initialized before proceeding with async method
@@ -57,7 +61,11 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         return dict(
             mac_addr='aa:bb:cc:dd:ee:ff'
             ,service_uuid='0000fff3-0000-1000-8000-00805f9b34fb'
-            ,led_strip_hex_color=0xff00ff
+            ,led_strip=dict(
+                hex_color=0xffffff
+                ,is_on=True
+                ,brightness=100
+            )
         )
 
     ##~~ SettingsPlugin mixin
@@ -106,34 +114,87 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     #~~ SimpleApiPlugin mixin
     def on_api_command(self, command, data):
         self._logger.debug("POST Command received: " + command + ", with data: " + str(data)) 
-        if command == "update_color":
-            color = data.get('color_hex', None)
-            self.update_rgb(color)
+        if command == "turn_on":
+            self._turn_on(bool(data.get('is_on', None)))
         elif command == 'do_reconnect':
             return self.do_reconnect()
+
+        if self.led_strip_config["is_on"]:
+            if command == "update_color":
+                color = data.get('color_hex', None)
+                self._update_rgb(color)
+            elif command == "update_brightness":
+                self._update_brightness(data.get('brightness', None))
+        else:
+            self._logger.debug("Command ignored, led strip is off")
 
     ##~~ SimpleApiPlugin hook
     def get_api_commands(self):
         return dict(
 		    update_color=["color_hex"]
             ,do_reconnect=[]
+            ,update_brightness=["brightness"]
+            ,turn_on=["is_on"]
         )
 
     # simple api command handler
-    def update_rgb(self, ui_color):
-        self.color_rgb = int(ui_color, 16)
+    def _update_rgb(self, ui_color):
+        color_rgb = int(ui_color, 16)
+        if color_rgb == self.led_strip_config["hex_color"]:
+            self._logger.debug("Update color ignored, no value change.")
+            return
+        self.led_strip_config["hex_color"] = color_rgb
         self.on_settings_save(dict(
-            led_strip_hex_color=self.color_rgb
+            led_strip=dict(
+                hex_color=color_rgb
+                )
         ))
         cmd = self.led_cmd_maker.create_set_color_command(
-            r_compo= (self.color_rgb & 0xff0000) >> 16
-            ,g_compo= (self.color_rgb & 0x00ff00) >> 8
-            ,b_compo= self.color_rgb & 0x0000ff
+            r_compo= (color_rgb & 0xff0000) >> 16
+            ,g_compo= (color_rgb & 0x00ff00) >> 8
+            ,b_compo= color_rgb & 0x0000ff
         )
         asyncio.run_coroutine_threadsafe(
             self.BLE_intf.send_msg(cmd), self.worker_mgr.loop
         )
-        self._logger.debug("New color updated: " + str(hex(self.color_rgb)))
+        self._logger.debug("New color updated: " + str(hex(color_rgb)))
+
+    # simple api command handler
+    def _turn_on(self, doTurnOn: bool):
+        if doTurnOn is None:
+            return
+        if doTurnOn == self.led_strip_config["is_on"]:
+            self._logger.debug("Turn on/off update ignored, no value change.")
+            return
+
+        self.led_strip_config["is_on"] = doTurnOn
+        cmd = bytearray()
+        if doTurnOn:
+            cmd = self.led_cmd_maker.create_turn_on_command()
+        else:
+            cmd = self.led_cmd_maker.create_turn_off_command()
+
+        asyncio.run_coroutine_threadsafe(
+                self.BLE_intf.send_msg(cmd), self.worker_mgr.loop
+            )
+        self._logger.debug("LED strip turned " + ("on" if doTurnOn else "off"))
+
+    # simple api command handler
+    def _update_brightness(self, brightness: int):
+        if int(brightness) > 100:
+            self._logger.debug("LED strip brightness set value (" + str(brightness) + ") exceeds max allowed value (" + str(100) + ")")
+
+        brightness_val = int(brightness) & 0x64 # limit brightness value up to 100 only
+
+        if brightness_val == self.led_strip_config["brightness"]:
+            self._logger.debug("Update brightness ignored, no value change.")
+            return
+        self.led_strip_config["brightness"] = brightness_val
+        cmd = self.led_cmd_maker.create_set_brightness_command(brightness=self.led_strip_config["brightness"])
+        asyncio.run_coroutine_threadsafe(
+                self.BLE_intf.send_msg(cmd), self.worker_mgr.loop
+            )
+        self._logger.debug("LED strip brightness updated to " + str(self.led_strip_config["brightness"]))
 
     # simple api get handler
     def do_reconnect(self):
@@ -172,7 +233,11 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         return dict(
             mac_addr=self._settings.get(["mac_addr"])
             ,service_uuid=self._settings.get(["service_uuid"])
-            ,led_strip_hex_color=self._settings.get(["led_strip_hex_color"])
+            ,led_strip=dict(
+                hex_color=int(self._settings.get_int(["led_strip", "hex_color"]))
+                ,is_on=bool(self._settings.get(["led_strip"])["is_on"])
+                ,brightness=int(self._settings.get_int(["led_strip", "brightness"]))
+            )
         )
 
 __plugin_name__ = "BLE LED Controller"
