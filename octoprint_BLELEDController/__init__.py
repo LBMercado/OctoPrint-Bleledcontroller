@@ -21,16 +21,14 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     #~~ StartupPlugin mixin
     def on_after_startup(self):
         self._logger.info("BLELEDStripPlugin has started initializing")
-    
-        self.led_strip_config = self._settings.get(["led_strip"])
-
+        
         self.BLE_intf = BLELEDControllerInterface(
             address=self._settings.get(["mac_addr"])
         ,service_UID=self._settings.get(["service_uuid"]),
         logger=self._logger)
 
         self.led_cmd_maker = LEDCommand(start_code=0x7e,end_code=0xef)
-        self._logger.info("Init settings - MAC Address: " + self._settings.get(["mac_addr"]) 
+        self._logger.debug("Init settings - MAC Address: " + self._settings.get(["mac_addr"]) 
                         + "\nService UUID: " + self._settings.get(["service_uuid"])
                         + "\nLED Strip Config: RGB Hex: " + str(hex(self._settings.get_int(["led_strip", "hex_color"])))
                         + "\n is on: " + str(self._settings.get(["led_strip", "is_on"]))
@@ -119,7 +117,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         elif command == 'do_reconnect':
             return self.do_reconnect()
 
-        if self.led_strip_config["is_on"]:
+        if self._settings.get(["led_strip", "is_on"]):
             if command == "update_color":
                 color = data.get('color_hex', None)
                 self._update_rgb(color)
@@ -140,10 +138,9 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     # simple api command handler
     def _update_rgb(self, ui_color):
         color_rgb = int(ui_color, 16)
-        if color_rgb == self.led_strip_config["hex_color"]:
+        if color_rgb == self._settings.get(["led_strip", "hex_color"]):
             self._logger.debug("Update color ignored, no value change.")
             return
-        self.led_strip_config["hex_color"] = color_rgb
         self.on_settings_save(dict(
             led_strip=dict(
                 hex_color=color_rgb
@@ -163,11 +160,15 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def _turn_on(self, doTurnOn: bool):
         if doTurnOn is None:
             return
-        if doTurnOn == self.led_strip_config["is_on"]:
+        if doTurnOn == self._settings.get(["led_strip", "is_on"]):
             self._logger.debug("Turn on/off update ignored, no value change.")
             return
 
-        self.led_strip_config["is_on"] = doTurnOn
+        self.on_settings_save(dict(
+            led_strip=dict(
+                is_on=bool(doTurnOn)
+                )
+        ))
         cmd = bytearray()
         if doTurnOn:
             cmd = self.led_cmd_maker.create_turn_on_command()
@@ -186,15 +187,21 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
 
         brightness_val = int(brightness) & 0x64 # limit brightness value up to 100 only
 
-        if brightness_val == self.led_strip_config["brightness"]:
+        if brightness_val == self._settings.get(["led_strip", "brightness"]):
             self._logger.debug("Update brightness ignored, no value change.")
             return
-        self.led_strip_config["brightness"] = brightness_val
-        cmd = self.led_cmd_maker.create_set_brightness_command(brightness=self.led_strip_config["brightness"])
+        
+        self.on_settings_save(dict(
+            led_strip=dict(
+                brightness=brightness_val
+                )
+        ))
+        
+        cmd = self.led_cmd_maker.create_set_brightness_command(brightness=self._settings.get(["led_strip", "brightness"]))
         asyncio.run_coroutine_threadsafe(
                 self.BLE_intf.send_msg(cmd), self.worker_mgr.loop
             )
-        self._logger.debug("LED strip brightness updated to " + str(self.led_strip_config["brightness"]))
+        self._logger.debug("LED strip brightness updated to " + str(self._settings.get(["led_strip", "brightness"])))
 
     # simple api get handler
     def do_reconnect(self):
@@ -207,7 +214,6 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         return flask.jsonify(is_connected=bool(self.BLE_intf.is_connected()))
 
     ##~~ Softwareupdate hook 
-    # @TODO: update config
     def get_update_information(self):
         # Define the configuration for your plugin to use with the Software Update
         # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
@@ -234,9 +240,9 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
             mac_addr=self._settings.get(["mac_addr"])
             ,service_uuid=self._settings.get(["service_uuid"])
             ,led_strip=dict(
-                hex_color=int(self._settings.get_int(["led_strip", "hex_color"]))
-                ,is_on=bool(self._settings.get(["led_strip"])["is_on"])
-                ,brightness=int(self._settings.get_int(["led_strip", "brightness"]))
+                hex_color=self._settings.get_int(["led_strip", "hex_color"])
+                ,is_on=self._settings.get(["led_strip", "is_on"])
+                ,brightness=self._settings.get_int(["led_strip", "brightness"])
             )
         )
 

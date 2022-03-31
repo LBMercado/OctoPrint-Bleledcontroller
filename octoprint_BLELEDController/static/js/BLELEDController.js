@@ -25,8 +25,8 @@ $(function() {
 
         self.onBeforeBinding = function() {
             self.updateColorView(self.settingsViewModel.settings.plugins.BLELEDController.led_strip.hex_color());
-            self.is_on = self.settingsViewModel.settings.plugins.BLELEDController.led_strip.is_on();
-            self.brightness = self.settingsViewModel.settings.plugins.BLELEDController.led_strip.brightness();
+            self.is_on(self.settingsViewModel.settings.plugins.BLELEDController.led_strip.is_on());
+            self.brightness(self.settingsViewModel.settings.plugins.BLELEDController.led_strip.brightness());
         }
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
@@ -49,14 +49,27 @@ $(function() {
 
         self.applyChanges = function() {
             var color_hex = self.color().substring(1);
-            OctoPrint.simpleApiCommand('BLELEDController', 'turn_on', {'is_on': self.is_on})
+            OctoPrint.simpleApiCommand('BLELEDController', 'turn_on', {'is_on': self.is_on()})
             .then(() => {
                 if (self.is_on){
-                    OctoPrint.simpleApiCommand('BLELEDController', 'update_color', {'color_hex': color_hex});
-                    OctoPrint.simpleApiCommand('BLELEDController', 'update_brightness', {'brightness': self.brightness});
+                    var promise_1 = OctoPrint.simpleApiCommand('BLELEDController', 'update_color', {'color_hex': color_hex});
+                    var promise_2 = OctoPrint.simpleApiCommand('BLELEDController', 'update_brightness', {'brightness': self.brightness()});
+                    
+                    Promise.all([promise_1, promise_2])
+                    .then(() => {
+                        OctoPrint.settings.getPluginSettings('BLELEDController')
+                        .then((res) => {
+                            OctoPrint.settings.savePluginSettings('BLELEDController', res);
+                        });
+                    })
+                } else {
+                    OctoPrint.settings.getPluginSettings('BLELEDController')
+                        .then((res) => {
+                            OctoPrint.settings.savePluginSettings('BLELEDController', res);
+                        });
                 }
             });
-        }
+        };
     }
     OCTOPRINT_VIEWMODELS.push({
         construct: BleledcontrollerViewModel,
