@@ -1,4 +1,14 @@
 <div class="tab">
+    <div id="bleledcontroller_webcam_container" data-bind="visible: settingsViewModel.webcam_streamUrl() != ''">
+        <div id="bleledcontroller_webcam_rotator" data-bind="css: { webcam_rotated: settingsViewModel.webcam_rotate90(), webcam_unrotated: !settingsViewModel.webcam_rotate90() }">
+            <div class="webcam_fixed_ratio ratio43" data-bind="css: controlViewModel.webcamRatioClass">
+                <div class="webcam_fixed_ratio_inner">
+                    <img data-bind="css: { flipH: settingsViewModel.webcam_flipH(), flipV: settingsViewModel.webcam_flipV() }, attr: { src: webcam_streamUrl() }" />
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row-fluid">
         <label class="control-label">Color</label>
         <input class="span" id="color-picker-control" data-jscolor="{format: 'hex'}" data-bind="value: color, enable: is_on, event: {input: updateColor}">
@@ -12,5 +22,5 @@
     </div>
     <div class="row-fluid">
         <button class="btn span6" data-bind="click: applyChanges">Apply</button>
-    </div>    
+    </div>
 </div>
