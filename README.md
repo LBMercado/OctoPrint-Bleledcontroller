@@ -28,7 +28,7 @@ Paste this config code into the configuration, between the <busconfig> tags
         <allow send_interface="org.freedesktop.DBus.Properties"/>
     </policy>
 
-[View here for reference]https://forums.raspberrypi.com/viewtopic.php?t=108581)
+[View here for reference](https://forums.raspberrypi.com/viewtopic.php?t=108581)
 
 ## Configuration
 
