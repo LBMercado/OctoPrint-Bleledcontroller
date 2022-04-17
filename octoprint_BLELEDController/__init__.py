@@ -106,7 +106,8 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def get_assets(self):
         return dict(
             js=["js/BLELEDController.js", "js/BLELEDControllerSettings.js", "js/jscolor.min.js"],
-            css=["css/BLELEDController.css"]
+            css=["css/BLELEDController.css"],
+            img=["img/352060_bluetooth_searching_icon.png"]
         )
 
     #~~ SimpleApiPlugin mixin

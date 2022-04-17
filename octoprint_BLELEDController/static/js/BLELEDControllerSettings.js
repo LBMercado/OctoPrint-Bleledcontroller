@@ -14,16 +14,25 @@ $(function() {
         // ko variables
         self.mac_addr = ko.observable();
         self.service_uuid = ko.observable();
-        self.isConnTestOk = ko.observable("Not Started");
+        self.show_conn_status = ko.observable(false);
 
         self.testConn = function() {
+            self.show_conn_status(true);
+            $('.bleled-status').removeClass(['bleled-status-load-complete', 'bleled-status-load-fail']);
+            $('.bleled-status-check').hide();
+            $('.bleled-status-fail').hide();
+
             OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect')
-            .done((res)=>{
-                var is_connected = res.is_connected
-                self.isConnTestOk(is_connected ? "Connection successful!" : "Connection failed!");
-                showDialog("#settings_simpleDialog", function(dialog){
-                    dialog.modal('hide');
-                });
+            .done((res)=>{                
+                var is_connected = res.is_connected;
+                if (is_connected) {
+                    $('.bleled-status').addClass('bleled-status-load-complete');
+                    $('.bleled-status-check').show();
+                } else {
+                    $('.bleled-status').addClass('bleled-status-load-fail');
+                    $('.bleled-status-fail').show();
+                }
+                
             });
         };
 
@@ -51,20 +60,4 @@ $(function() {
         dependencies: [ "settingsViewModel" ],
         elements: [ "#settings_plugin_BLELEDController" ]
     });
-
-    function showDialog(dialogId, confirmFunction){
-        var myDialog = $(dialogId);
-        var confirmButton = $("button.btn-confirm", myDialog);
-        var cancelButton = $("button.btn-cancel", myDialog);
-
-        confirmButton.unbind("click");
-        confirmButton.bind("click", function() {
-            confirmFunction(myDialog);
-        });
-        myDialog.modal({
-        }).css({
-            width: 'auto',
-            'margin-left': function() { return -($(this).width() /2); }
-        });
-}
 });
