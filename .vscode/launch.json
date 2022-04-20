@@ -7,6 +7,15 @@
         {
             "type": "pwa-chrome",
             "request": "launch",
+            "name": "Build and Launch Chrome against localhost",
+            "url": "http://localhost:5000",
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "build-and-run",
+            "postDebugTask": "kill-tasks"
+        },
+        {
+            "type": "pwa-chrome",
+            "request": "launch",
             "name": "Launch Chrome against localhost",
             "url": "http://localhost:5000",
             "webRoot": "${workspaceFolder}",

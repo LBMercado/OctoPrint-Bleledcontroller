@@ -4,6 +4,20 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "build-and-run",
+            "type": "shell",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "plugin-build",
+                "server-run"
+            ]
+        },
+        {
             "label": "plugin-build",
             "type": "shell",
             "command": "source ${cwd}/../OctoPrint/dev/bin/activate && octoprint dev plugin:install",
@@ -13,7 +27,7 @@
                 "isDefault": true
             },
             "dependsOn": [
-                "dev-env-activate"
+                "compile-less-sources"
             ]
         },
         {
@@ -38,15 +52,18 @@
                       "endsPattern": ".",
                     }
                 }
-            ],
-            "dependsOn": [
-                "dev-env-activate"
             ]
         },
         {
             "label": "kill-tasks",
             "type": "shell",
             "command": "echo ${input:terminate}",
+            "problemMatcher": []
+        },
+        {
+            "label": "compile-less-sources",
+            "type": "shell",
+            "command": "lessc ${cwd}/octoprint_BLELEDController/static/less/BLELEDController.less  ${cwd}/octoprint_BLELEDController/static/css/BLELEDController.css",
             "problemMatcher": []
         }
     ],
