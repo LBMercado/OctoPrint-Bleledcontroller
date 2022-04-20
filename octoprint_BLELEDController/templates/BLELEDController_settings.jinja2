@@ -2,17 +2,19 @@
 <div id="connSettings">
     <div class="settings-label-input">
         <label>{{ _('LED Strip MAC Address:')}} </label>
-        <input type="text"  id="mac_addr" class="bleled-input-address" data-bind="value: settingsViewModel.settings.plugins.BLELEDController.mac_addr">
+        <input type="text"  id="mac_addr" class="bleled-input-address" data-bind="value: mac_addr">
         <label>{{ _('LED Strip Service UUID:') }}</label>
-        <input type="text" id="service_uuid" class="bleled-input-address" data-bind="value: settingsViewModel.settings.plugins.BLELEDController.service_uuid">
+        <input type="text" id="service_uuid" class="bleled-input-address" data-bind="value: service_uuid">
     </div>
     <span class="row-fluid">
         <input type="image" class="btn btn-icon bleled-settings-btn" src="/plugin/BLELEDController/static/img/352060_bluetooth_searching_icon.png" 
-               title="{{ _('Lookup BLE Device (WIP)')|edq }}" disabled />
+               title="{{ _('Lookup BLE Device')|edq }}" data-bind="click: openDevLookup" />
         <button class="btn bleled-settings-btn" data-bind="click: testConn">{{ _('Test Connection') }}</button>
         <div class="bleled-status" data-bind="visible: show_conn_status"> 
           <div class="bleled-status-check bleled-status-draw"> </div> 
           <div class="bleled-status-fail bleled-status-draw"> </div> 
         </div>
     </span>
+    
+    {% include 'BLELEDController_settings_dev_lookup.jinja2' %}
 </div>

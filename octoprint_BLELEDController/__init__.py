@@ -7,8 +7,12 @@ import asyncio
 import flask
 
 from .LEDCommand import LEDCommand
-from .BLELEDControllerInterface import BLELEDControllerInterface
+from .BLELEDControllerInterface import BLELEDControllerInterface, BLELEDControllerDummyInterface
 from .worker_manager import WorkerManager
+from .BLEDiscovery import BLEDiscovery, BLEDiscoveryDummy
+
+# FOR DEV PURPOSES, DISABLE ON DEPLOYED PLUGIN
+use_dummy_bleled_interface = False
 
 class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
@@ -22,10 +26,18 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def on_after_startup(self):
         self._logger.info("BLELEDStripPlugin has started initializing")
         
-        self.BLE_intf = BLELEDControllerInterface(
-            address=self._settings.get(["mac_addr"])
-        ,service_UID=self._settings.get(["service_uuid"]),
-        logger=self._logger)
+        if not use_dummy_bleled_interface:
+            self.BLE_intf = BLELEDControllerInterface(
+                address=self._settings.get(["mac_addr"])
+                ,service_UID=self._settings.get(["service_uuid"]),
+                logger=self._logger)
+            self.BLE_discovery = BLEDiscovery(logger=self._logger)
+        else:
+            self.BLE_intf = BLELEDControllerDummyInterface(
+                address=self._settings.get(["mac_addr"])
+                ,service_UID=self._settings.get(["service_uuid"]),
+                logger=self._logger)
+            self.BLE_discovery = BLEDiscoveryDummy(logger=self._logger)
 
         self.led_cmd_maker = LEDCommand(start_code=0x7e,end_code=0xef)
         self._logger.debug("Init settings - MAC Address: " + self._settings.get(["mac_addr"]) 
@@ -50,6 +62,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
                 self.BLE_intf.disconnect()
                 ,self.worker_mgr.loop
             )
+
             # have to block and make sure this finishes
             while not future.done():
                 pass
@@ -116,16 +129,19 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         if command == "turn_on":
             self._turn_on(bool(data.get('is_on', None)))
         elif command == 'do_reconnect':
-            return self.do_reconnect()
-
-        if self._settings.get(["led_strip", "is_on"]):
+            return self.do_reconnect() 
+        elif self._settings.get(["led_strip", "is_on"]) and (command == "update_color" or command == "update_brightness"):
             if command == "update_color":
                 color = data.get('color_hex', None)
                 self._update_rgb(color)
             elif command == "update_brightness":
                 self._update_brightness(data.get('brightness', None))
-        else:
-            self._logger.debug("Command ignored, led strip is off")
+        elif not self._settings.get(["led_strip", "is_on"]) and (command == "update_color" or command == "update_brightness"):
+                self._logger.debug("Command ignored, led strip is off")
+        elif command == 'do_ble_scan_task':
+            return self.do_ble_scan_task()
+        elif command == 'query_task':
+            return self.query_task(data.get('task_id', None))
 
     ##~~ SimpleApiPlugin hook
     def get_api_commands(self):
@@ -134,6 +150,8 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
             ,do_reconnect=[]
             ,update_brightness=["brightness"]
             ,turn_on=["is_on"]
+            ,do_ble_scan_task=[]
+            ,query_task=["task_id"]
         )
 
     # simple api command handler
@@ -204,7 +222,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
             )
         self._logger.debug("LED strip brightness updated to " + str(self._settings.get(["led_strip", "brightness"])))
 
-    # simple api get handler
+    # simple api command handler
     def do_reconnect(self):
         future = asyncio.run_coroutine_threadsafe(
             self.BLE_intf.reconnect(), self.worker_mgr.loop
@@ -213,6 +231,30 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         while not future.done():
             pass
         return flask.jsonify(is_connected=bool(self.BLE_intf.is_connected()))
+
+    # simple api command handler
+    def do_ble_scan_task(self):
+        future = asyncio.run_coroutine_threadsafe(
+            self.BLE_discovery.getDevices(redo_scan=True), self.worker_mgr.loop
+        )
+        task_id = self.worker_mgr.register_task(future)
+
+        return flask.jsonify(task_id=task_id)
+
+    # simple api command handler
+    def query_task(self, task_id: str):
+        task = self.worker_mgr.get_task(task_id=task_id)
+        res = None
+
+        if task is None:
+            self._logger.debug(f'query_task: task with id = {task_id} does not exist')
+            return None
+        if task.done():
+            res = task.result()
+            self._logger.debug(f'query_task: task with id = {task_id} result: {res}')
+            self.worker_mgr.deregister_task(task_id=task_id)
+        
+        return flask.jsonify(task_running=not task.done(), result=res)
 
     ##~~ Softwareupdate hook 
     def get_update_information(self):

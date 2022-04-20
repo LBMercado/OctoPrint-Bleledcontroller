@@ -60,11 +60,11 @@ class BLELEDControllerDummyInterface(BLELEDControllerInterface):
     def is_connected(self) -> bool:
         return self._is_connected
     
-    async def connect(self):
+    async def connect(self, do_simulate_failure: bool = False):
         self._logger.debug('connect starting')
         await asyncio.sleep(1)
-        self._is_connected = True
-        self._logger.debug('connect done')
+        self._is_connected = not do_simulate_failure
+        self._logger.debug('connect ' + 'done' if not do_simulate_failure else 'failed!')
 
     async def disconnect(self):
         self._logger.debug('disconnect starting')
@@ -77,10 +77,10 @@ class BLELEDControllerDummyInterface(BLELEDControllerInterface):
         await asyncio.sleep(1)
         self._logger.debug('send msg done')
 
-    async def reconnect(self):
+    async def reconnect(self, do_simulate_failure: bool = False):
         self._logger.debug('reconnect starting')
         await self.disconnect()
-        await self.connect()
+        await self.connect(do_simulate_failure)
         self._logger.debug('reconnect done')
 
 if __name__ == "__main__":

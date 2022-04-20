@@ -1,0 +1,39 @@
+<div id="bleled_settings_dev_lookup" class="modal hide fade">
+    <div class="modal-header">
+        <h4 class="modal-title">{{ _('BLE Device Lookup') }}</h4>
+        <button id="bleled_lookup_dev_btn" class="btn bleled-lookup-btn" data-bind="click: doDevLookup"> {{ _('Scan') }} </button>
+        <p data-bind="visible: is_scan_started">
+            Click on one of the scanned devices, then confirm to use the address and selected UUID.
+        </p>
+    </div>
+    <div class="modal-body">
+        <table id="bleled_lookup_dev_tbl" class="table table-condensed">
+            <thead>
+                <tr>
+                    <th>
+                        {{_('Name')}}
+                    </th>
+                    <th>
+                        {{_('Details')}}
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody data-bind="foreach: devScanList">
+                <tr data-bind="click: function() { $root.onDeviceRowClick($data) }, css: { 'bleled-dev-row-selected': $root.isDeviceRowSelected($data) }">
+                    <td data-bind="text: name"></td>
+                    <td>
+                        <div data-bind="text: $data.addr"></div>
+                        <select
+                                data-bind="visible: $data.service_uuids !== null , value: $data.selected_uuid, options: $data.service_uuids">
+                        </select>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-cancel" data-dismiss="modal" data-bind="click: cancelDevLookup" aria-hidden="true"> {{ _('Cancel') }} </button>
+        <button class="btn btn-primary" data-bind="click: confirmDevLookup" >{{ _('Confirm') }}</button>
+    </div>
+</div>
