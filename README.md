@@ -32,7 +32,10 @@ Paste this config code into the configuration, between the <busconfig> tags
 
 ## Configuration
 
-You will need to know the MAC address of the bluetooth device in question, though I could implement an auto-scanner in the future, for now it is manually set.
+<strike>You will need to know the MAC address of the bluetooth device in question, though I could implement an auto-scanner in the future, for now it is manually set. </strike>
+
+In version 0.3.0 of this plugin, an auto scanner has been implemented. You will still need to run it manually via settings.
+
 For the service UUID to use, it should be the same like in the repository I based this project from. If not, you can make use of Bleak to find out the service UUID of the device in question.
 
 ## Raw code snippet for testing the bluetooth functionality
