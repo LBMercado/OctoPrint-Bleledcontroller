@@ -62,6 +62,7 @@ class BLEDiscovery:
         except Exception as e:
             self._logger.debug('BLEDiscovery encountered ERROR during discoverDevServices')
             self._logger.debug(e)
+            return ()
 
 
 class BLEDiscoveryDummy(BLEDiscovery):
