@@ -50,6 +50,7 @@ class BLELEDControllerInterface():
     async def reconnect(self):
         await self.disconnect()
         await self.connect()
+        return self.is_connected()
 
 # for testing purposes, do not use
 class BLELEDControllerDummyInterface(BLELEDControllerInterface):
@@ -82,6 +83,7 @@ class BLELEDControllerDummyInterface(BLELEDControllerInterface):
         await self.disconnect()
         await self.connect(do_simulate_failure)
         self._logger.debug('reconnect done')
+        return self.is_connected()
 
 if __name__ == "__main__":
     intf = BLELEDControllerInterface('','')
