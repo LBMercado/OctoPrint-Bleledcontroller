@@ -37,9 +37,27 @@ $(function() {
             self.bleledStatusCheck.hide();
             self.bleledStatusFail.hide();
 
-            OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect')
+            OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect_task')
             .done((res)=>{                
-                var is_connected = res.is_connected;
+                if (res !== null){
+                    var task_id = res.task_id;
+
+                    OctoPrint.simpleApiCommand('BLELEDController', 'query_task', {'task_id': task_id})
+                    .done((res) => {
+                        var is_task_done = !res.task_running;
+                        var task_res = res.result;
+                        self._testConnQuery(task_id, is_task_done, task_res);
+                    });
+                } else {
+                    self.bleledStatus.addClass('bleled-status-load-fail');
+                    self.bleledStatusFail.show();
+                } 
+            });
+        };
+
+        self._testConnQuery = function(task_id, is_task_done, task_res){
+            if (is_task_done){
+                var is_connected = task_res;
                 if (is_connected) {
                     self.bleledStatus.addClass('bleled-status-load-complete');
                     self.bleledStatusCheck.show();
@@ -47,7 +65,21 @@ $(function() {
                     self.bleledStatus.addClass('bleled-status-load-fail');
                     self.bleledStatusFail.show();
                 }
-                
+                return;
+            }
+            
+            OctoPrint.simpleApiCommand('BLELEDController', 'query_task', {'task_id': task_id})
+            .done((res) => {
+                if (res === null){
+                    return;
+                }
+                if (!res.task_running){
+                    self._testConnQuery(task_id, !res.task_running, res.result)
+                } else {
+                    setTimeout(() => {
+                        self._testConnQuery(task_id, !res.task_running, res.result)
+                    }, self.query_freq_ms);
+                };                
             });
         };
 
@@ -162,6 +194,10 @@ $(function() {
             self.settingsViewModel.settings.plugins.BLELEDController.mac_addr(self.mac_addr());
             self.settingsViewModel.settings.plugins.BLELEDController.service_uuid(self.service_uuid());
         };
+
+        self.onSettingsHidden = function() {
+            self.show_conn_status(false);
+        }
 
         self.isDeviceRowSelected = function(row){
             if (self.selectedLookupDevice() == null || row == null) {

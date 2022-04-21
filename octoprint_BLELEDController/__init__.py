@@ -128,8 +128,8 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.debug("POST Command received: " + command + ", with data: " + str(data)) 
         if command == "turn_on":
             self._turn_on(bool(data.get('is_on', None)))
-        elif command == 'do_reconnect':
-            return self.do_reconnect() 
+        elif command == 'do_reconnect_task':
+            return self.do_reconnect_task() 
         elif self._settings.get(["led_strip", "is_on"]) and (command == "update_color" or command == "update_brightness"):
             if command == "update_color":
                 color = data.get('color_hex', None)
@@ -147,7 +147,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def get_api_commands(self):
         return dict(
 		    update_color=["color_hex"]
-            ,do_reconnect=[]
+            ,do_reconnect_task=[]
             ,update_brightness=["brightness"]
             ,turn_on=["is_on"]
             ,do_ble_scan_task=[]
@@ -223,14 +223,13 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.debug("LED strip brightness updated to " + str(self._settings.get(["led_strip", "brightness"])))
 
     # simple api command handler
-    def do_reconnect(self):
+    def do_reconnect_task(self):
         future = asyncio.run_coroutine_threadsafe(
             self.BLE_intf.reconnect(), self.worker_mgr.loop
         )
-        # have to block and make sure this finishes
-        while not future.done():
-            pass
-        return flask.jsonify(is_connected=bool(self.BLE_intf.is_connected()))
+        task_id = self.worker_mgr.register_task(future)
+
+        return flask.jsonify(task_id=task_id)
 
     # simple api command handler
     def do_ble_scan_task(self):
