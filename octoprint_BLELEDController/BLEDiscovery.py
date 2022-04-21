@@ -47,7 +47,7 @@ class BLEDiscovery:
             async with BleakClient(address) as client_adhoc:
                 if not client_adhoc.is_connected:
                     self._logger.debug('BLEDiscovery encountered ERROR during discoverDevServices - client is not connected')
-                    return ()
+                    return (uuid_list, descriptor_list)
 
                 for service in client_adhoc.services:
                     for char in service.characteristics:
@@ -62,7 +62,7 @@ class BLEDiscovery:
         except Exception as e:
             self._logger.debug('BLEDiscovery encountered ERROR during discoverDevServices')
             self._logger.debug(e)
-            return ()
+            return (uuid_list, descriptor_list)
 
 
 class BLEDiscoveryDummy(BLEDiscovery):
