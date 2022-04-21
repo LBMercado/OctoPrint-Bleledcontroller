@@ -88,8 +88,11 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         new_mac_addr = self._settings.get(["mac_addr"])
         new_service_uuid = self._settings.get(["service_uuid"])
 
-        # connection configuration changed, reset required
-        if old_mac_addr != new_mac_addr or old_service_uuid != new_service_uuid:
+        # check if connection configuration changed
+        # check also if current connection is using new id
+        # reset connection if so
+        if (old_mac_addr != new_mac_addr or old_service_uuid != new_service_uuid) and \
+           (self.BLE_intf.address != new_mac_addr or self.BLE_intf.service_UID != new_service_uuid):
             if not self.BLE_intf.is_connected:
                 self.BLE_intf.set_conn_params(
                     dict(
@@ -129,7 +132,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         if command == "turn_on":
             self._turn_on(bool(data.get('is_on', None)))
         elif command == 'do_reconnect_task':
-            return self.do_reconnect_task() 
+            return self.do_reconnect_task(address=data.get('address', None),uuid=data.get('uuid', None))
         elif self._settings.get(["led_strip", "is_on"]) and (command == "update_color" or command == "update_brightness"):
             if command == "update_color":
                 color = data.get('color_hex', None)
@@ -147,7 +150,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
     def get_api_commands(self):
         return dict(
 		    update_color=["color_hex"]
-            ,do_reconnect_task=[]
+            ,do_reconnect_task=["address", "uuid"]
             ,update_brightness=["brightness"]
             ,turn_on=["is_on"]
             ,do_ble_scan_task=[]
@@ -223,7 +226,12 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.debug("LED strip brightness updated to " + str(self._settings.get(["led_strip", "brightness"])))
 
     # simple api command handler
-    def do_reconnect_task(self):
+    def do_reconnect_task(self, address = None, uuid = None):
+        if address is not None and uuid is not None:
+            self.BLE_intf.set_conn_params({
+                'address': address,
+                'service_UID': uuid
+            })
         future = asyncio.run_coroutine_threadsafe(
             self.BLE_intf.reconnect(), self.worker_mgr.loop
         )
@@ -233,8 +241,12 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
 
     # simple api command handler
     def do_ble_scan_task(self):
+        # disconnect current ble client if running scanner
+        if self.BLE_intf.is_connected:
+            pass
+
         future = asyncio.run_coroutine_threadsafe(
-            self.BLE_discovery.getDevices(redo_scan=True), self.worker_mgr.loop
+            self.BLE_discovery.getDevices(redo_scan=True, active_client=self.BLE_intf), self.worker_mgr.loop
         )
         task_id = self.worker_mgr.register_task(future)
 
@@ -262,7 +274,7 @@ class BLELEDStripControllerPlugin(octoprint.plugin.SettingsPlugin,
         # for details.
         return {
             "BLELEDController": {
-                "displayName": "Bleledcontroller Plugin",
+                "displayName": "BLELED Controller",
                 "displayVersion": self._plugin_version,
 
                 # version check: github repository

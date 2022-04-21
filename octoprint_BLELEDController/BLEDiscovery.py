@@ -1,5 +1,6 @@
 import asyncio
 from bleak import discover, BleakClient
+from .BLELEDControllerInterface import BLELEDControllerDummyInterface, BLELEDControllerInterface
 
 class BLEDiscovery:
     def __init__(self, logger):
@@ -21,10 +22,20 @@ class BLEDiscovery:
             self._logger.debug('BLEDiscovery encountered ERROR during lookupDevices')
             self._logger.debug(e)
 
-    async def getDevices(self, redo_scan = False):
+    async def getDevices(self, redo_scan = False, active_client: BLELEDControllerInterface = None):
         if not redo_scan and self.device_list:
             return self.device_list
+        
+        # disconnect active client (if passed)
+        if active_client is not None and active_client.is_connected:
+            await active_client.disconnect()
+        
         await self._lookupDevices()
+        
+        # reconnect active client (if passed)
+        if active_client is not None and not active_client.is_connected:
+            await active_client.connect()
+
         return self.device_list
 
     async def discoverDevServices(self, address: str = None, client: BleakClient = None):
@@ -92,10 +103,20 @@ class BLEDiscoveryDummy(BLEDiscovery):
             }
         ] if not simulate_none_found else []
 
-    async def getDevices(self, redo_scan = False):
+    async def getDevices(self, redo_scan = False, active_client: BLELEDControllerDummyInterface = None):
         if not redo_scan and self.device_list:
             return self.device_list
+        
+        # disconnect active client (if passed)
+        if active_client is not None and active_client.is_connected:
+            await active_client.disconnect()
+        
         await self._lookupDevices()
+        
+        # reconnect active client (if passed)
+        if active_client is not None and not active_client.is_connected:
+            await active_client.connect()
+
         return self.device_list
 
     async def discoverDevServices(self, address: str = None, client: BleakClient = None, simulate_failure = False):

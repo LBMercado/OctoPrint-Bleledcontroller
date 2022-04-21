@@ -37,7 +37,7 @@ $(function() {
             self.bleledStatusCheck.hide();
             self.bleledStatusFail.hide();
 
-            OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect_task')
+            OctoPrint.simpleApiCommand('BLELEDController', 'do_reconnect_task', (self.mac_addr() !== null && self.service_uuid() !== null) ? {'address': self.mac_addr(), 'uuid': self.service_uuid()} : null)
             .done((res)=>{                
                 if (res !== null){
                     var task_id = res.task_id;
