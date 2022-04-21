@@ -13,7 +13,7 @@ class BLEDiscovery:
             self._logger.debug('BLEDiscovery scanned devices: ' + str(self.device_list))
             # fetch uuid and descriptor info
             for device_info in self.device_list:
-                service_uuids, descriptors = await self.BLE_discovery.discoverDevServices(address=device_info['address'])
+                service_uuids, descriptors = await self.discoverDevServices(address=device_info['address'])
 
                 device_info['service_uuids'] = service_uuids
                 device_info['descriptors'] = descriptors
