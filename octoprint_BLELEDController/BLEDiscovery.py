@@ -13,15 +13,18 @@ class BLEDiscovery:
             self.device_list = [{'name': dev.name, 'address': dev.address} for dev in devices]
             self._logger.debug('BLEDiscovery scanned devices: ' + str(self.device_list))
             # fetch uuid and descriptor info
-            for device_info in self.device_list:
-                service_uuids, descriptors = await self.discoverDevServices(address=device_info['address'])
+            await asyncio.gather(*[self._discoverDevServices(dev) for dev in self.device_list])
 
-                device_info['service_uuids'] = service_uuids
-                device_info['descriptors'] = descriptors
         except Exception as e:
             self._logger.debug('BLEDiscovery encountered ERROR during lookupDevices')
             self._logger.debug(e)
 
+    async def _discoverDevServices(self, dev: dict):
+        service_uuids, descriptors = await self.discoverDevServices(address=dev['address'])
+
+        dev['service_uuids'] = service_uuids
+        dev['descriptors'] = descriptors
+    
     async def getDevices(self, redo_scan = False, active_client: BLELEDControllerInterface = None):
         if not redo_scan and self.device_list:
             return self.device_list
