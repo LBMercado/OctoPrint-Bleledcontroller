@@ -43,7 +43,7 @@ class BLEDiscovery:
         descriptor_list = []
 
         try:
-            if client is not None and self.client.is_connected:
+            if client is not None and client.is_connected:
                 for service in client.services:
                     for char in service.characteristics:
                         if "read" in char.properties:

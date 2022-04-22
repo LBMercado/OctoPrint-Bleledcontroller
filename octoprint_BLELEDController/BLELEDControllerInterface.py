@@ -3,17 +3,17 @@ import asyncio
 
 class BLELEDControllerInterface():
     def __init__(self, address: str, service_UID: str, logger):
-        self.address = address
-        self.service_UID = service_UID
+        self.address = address.upper()
+        self.service_UID = service_UID.lower()
         self.client_conn = None
         self._logger = logger
         self._is_connecting = False
     
     def set_conn_params(self, conn_params: dict):
         if "address" in conn_params.keys():
-            self.address = conn_params["address"]
+            self.address = conn_params["address"].upper()
         if "service_UID" in conn_params.keys():
-            self.service_UID = conn_params["service_UID"]
+            self.service_UID = conn_params["service_UID"].lower()
     
     async def connect(self):
         if not self._is_connecting:
@@ -29,10 +29,14 @@ class BLELEDControllerInterface():
                 self._is_connecting = False
 
     def is_connected(self) -> bool:
-        if self.client_conn is not None:
-            return bool(self.client_conn.is_connected) # prevent error relating to different data type passed
-        else:
-            return False
+        if self.client_conn is not None and self.client_conn.is_connected:
+            for svc in self.client_conn.services:
+                for char in svc.characteristics:
+                    # return true only if our set service UUID matches a service UUID available
+                    if "read" in char.properties and char.uuid == self.service_UID:
+                        return True
+            self._logger.debug('current connection has invalid service uuid set')
+        return False
 
     async def disconnect(self):
         if not self._is_connecting:
@@ -41,7 +45,7 @@ class BLELEDControllerInterface():
             self._is_connecting = False
 
     async def send_msg(self, cmd: bytearray):
-        if self.is_connected and not self._is_connecting:
+        if self.is_connected() and not self._is_connecting:
             try:
                 await self.client_conn.write_gatt_char(self.service_UID, cmd)
             except Exception as e:
