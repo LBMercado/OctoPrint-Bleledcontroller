@@ -11,19 +11,17 @@ $(function() {
         // view models
         self.settingsViewModel = parameters[0];
         self.controlViewModel = parameters[1];
+        self.loginStateViewModel = parameters[2];
+        self.accessViewModel = parameters[3];
 
         // binding variables
         self.color = ko.observable();
         self.is_on = ko.observable();
         self.brightness = ko.observable();
-        self.webcam_streamUrl = ko.computed(function(){
-			if(self.settingsViewModel.webcam_streamUrl() !== "") {
-				return self.settingsViewModel.webcam_streamUrl();
-			} else {
-				return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==";
-			}
-		});
-
+        self.webcamDisableTimeout = undefined;
+        self.webcamLoaded = ko.observable(false);
+        self.webcamMjpgEnabled = ko.observable(false);
+        self.webcamError = ko.observable(false);
 
         // hooks
         self.onBeforeBinding = function() {
@@ -42,6 +40,36 @@ $(function() {
                 if (data.led_strip.hasOwnProperty('brightness'))
                     self.brightness(data.led_strip.brightness);
             }
+        };
+
+        self.onTabChange = function (current, previous) {
+            if (current == "#tab_plugin_BLELEDController") {
+                self._enableWebcam();
+            } else if (previous == "#tab_plugin_BLELEDController") {
+                self._disableWebcam();
+            }
+        };
+
+        self.onBrowserTabVisibilityChange = function (status) {
+            if (status) {
+                self._enableWebcam();
+            } else {
+                self._disableWebcam();
+            }
+        };
+
+        self.onWebcamLoaded = function () {
+            if (self.webcamLoaded()) return;
+
+            log.debug("Webcam stream loaded");
+            self.webcamLoaded(true);
+            self.webcamError(false);
+        };
+
+        self.onWebcamErrored = function () {
+            log.debug("Webcam stream failed to load/disabled");
+            self.webcamLoaded(false);
+            self.webcamError(true);
         };
 
         // custom-defined functions
@@ -81,11 +109,82 @@ $(function() {
                 }
             });
         };
+
+        self._switchToMjpgWebcam = function () {
+            var webcamImage = $("#bleled_webcam_image");
+            var currentSrc = webcamImage.attr("src");
+
+            // safari bug doesn't release the mjpeg stream, so we just set it up the once
+            if (OctoPrint.coreui.browser.safari && currentSrc != undefined) {
+                return;
+            }
+
+            var newSrc = self.settingsViewModel.webcam_streamUrl();
+            if (currentSrc != newSrc) {
+                if (self.settingsViewModel.webcam_cacheBuster()) {
+                    if (newSrc.lastIndexOf("?") > -1) {
+                        newSrc += "&";
+                    } else {
+                        newSrc += "?";
+                    }
+                    newSrc += new Date().getTime();
+                }
+
+                self.webcamLoaded(false);
+                self.webcamError(false);
+                webcamImage.attr("src", newSrc);
+
+                self.webcamMjpgEnabled(true);
+            }
+        };
+
+
+        self._enableWebcam = function () {
+            if (
+                OctoPrint.coreui.selectedTab != "#tab_plugin_BLELEDController" ||
+                !OctoPrint.coreui.browserTabVisible
+            ) {
+                return;
+            }
+
+            if (self.webcamDisableTimeout != undefined) {
+                clearTimeout(self.webcamDisableTimeout);
+            }
+
+            // IF disabled then we dont need to do anything
+            if (self.settingsViewModel.webcam_webcamEnabled() == false) {
+                return;
+            }
+
+            // Determine stream type and switch to corresponding webcam.
+            var streamType = determineWebcamStreamType(self.settingsViewModel.webcam_streamUrl());
+            if (streamType == "mjpg") {
+                self._switchToMjpgWebcam();
+            } else {
+                throw "Unsupported or unknown stream type " + streamType;
+            }
+        };
         
+        self._disableWebcam = function () {
+            // only disable webcam stream if tab is out of focus for more than 5s, otherwise we might cause
+            // more load by the constant connection creation than by the actual webcam stream
+
+            // safari bug doesn't release the mjpeg stream, so we just disable this for safari.
+            if (OctoPrint.coreui.browser.safari) {
+                return;
+            }
+
+            var timeout = self.settingsViewModel.webcam_streamTimeout() || 5;
+            self.webcamDisableTimeout = setTimeout(function () {
+                log.debug("Unloading webcam stream");
+                $("#bleled_webcam_image").attr("src", "");
+                self.webcamLoaded(false);
+            }, timeout * 1000);
+        };
     };   
     OCTOPRINT_VIEWMODELS.push({
         construct: BleledcontrollerViewModel,
-        dependencies: [ "settingsViewModel", "controlViewModel" ],
+        dependencies: [ "settingsViewModel", "controlViewModel", "loginStateViewModel", "accessViewModel" ],
         elements: [ "#tab_plugin_BLELEDController" ]
     });
 });
